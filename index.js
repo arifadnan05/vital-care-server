@@ -66,6 +66,33 @@ async function run() {
       }
       next()
     }
+    // set admin in the ui 
+
+    app.patch('/users/admin/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: 'admin'
+        }
+      }
+      const result = await usersCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+    })
+
+    // set seller in the ui
+
+    app.patch('/users/seller/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+          $set: {
+              role: 'seller'
+          }
+      }
+      const result = await usersCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+  })
 
     // user related api
 
