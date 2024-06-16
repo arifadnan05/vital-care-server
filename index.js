@@ -1,6 +1,6 @@
 const express = require('express')
 const app = express();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const jwt = require('jsonwebtoken');
 const cors = require('cors')
@@ -66,14 +66,14 @@ async function run() {
       }
       next()
     }
-    // set admin in the ui 
+    // set user in the ui 
 
-    app.patch('/users/admin/:id', async (req, res) => {
+    app.patch('/users/user/:id', async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
-          role: 'admin'
+          role: 'user'
         }
       }
       const result = await usersCollection.updateOne(filter, updatedDoc)
@@ -86,15 +86,48 @@ async function run() {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
-          $set: {
-              role: 'seller'
-          }
+        $set: {
+          role: 'seller'
+        }
       }
       const result = await usersCollection.updateOne(filter, updatedDoc)
       res.send(result)
-  })
+    })
 
     // user related api
+
+    // only admin access routes
+    app.get('/users/admin/:email', async (req, res) => {
+      const email = req.params.email;
+      // if (email != req.decoded.email) {
+      //   return res.status(403).send({ message: 'Unauthorize access' })
+      // }
+      const query = { email: email };
+      const user = await usersCollection.findOne(query)
+      let admin = false;
+      if (user) {
+        admin = user?.role === 'admin';
+      }
+      res.send({ admin })
+    })
+
+    // only seller can access this route
+
+    app.get('/users/seller/:email', async (req, res) => {
+      const email = req.params.email;
+      // if (email != req.decoded.email) {
+      //   return res.status(403).send({ message: 'Unauthorize access' })
+      // }
+      const query = { email: email };
+      const user = await usersCollection.findOne(query)
+      let seller = false;
+      if (user) {
+        seller = user?.role === 'seller';
+      }
+      res.send({ seller })
+    })
+
+
 
     app.get('/users', async (req, res) => {
       const result = await usersCollection.find().toArray()
