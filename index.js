@@ -126,6 +126,19 @@ async function run() {
       }
       res.send({ seller })
     })
+    app.get('/users/user/:email', async (req, res) => {
+      const email = req.params.email;
+      // if (email != req.decoded.email) {
+      //   return res.status(403).send({ message: 'Unauthorize access' })
+      // }
+      const query = { email: email };
+      const people = await usersCollection.findOne(query)
+      let user = false;
+      if (people) {
+        user = people?.role === 'user';
+      }
+      res.send({ user })
+    })
 
 
 
