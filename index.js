@@ -175,7 +175,13 @@ async function run() {
       res.send(result)
     })
 
+    // medicine add only seller routes
 
+    app.post('/medicine', async (req, res) => {
+      const query = req.body
+      const result = await medicineCollection.insertOne(query)
+      res.send(result)
+    })
 
 
 
