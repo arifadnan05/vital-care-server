@@ -183,8 +183,12 @@ async function run() {
       res.send(result)
     })
 
+    // seller added medicine showing on the seller dashboard
 
-
+    app.get('/medicine/:email', async (req, res) => {
+      const result = await medicineCollection.find({ seller_email: req.params.email }).toArray();
+      res.send(result)
+    })
 
 
     await client.db("admin").command({ ping: 1 });
