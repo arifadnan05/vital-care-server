@@ -175,6 +175,15 @@ async function run() {
       res.send(result)
     })
 
+    // single medicine find api
+
+    app.get('/medicine/details/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await medicineCollection.findOne(query)
+      res.send(result)
+    })
+
     // medicine add only seller routes
 
     app.post('/medicine', async (req, res) => {
