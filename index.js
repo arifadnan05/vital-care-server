@@ -31,6 +31,7 @@ async function run() {
     const usersCollection = client.db('vitalCare').collection('users')
     const categorySlideCollection = client.db('vitalCare').collection('homeCategory')
     const medicineCollection = client.db('vitalCare').collection('medicine')
+    const cartsCollection = client.db('vitalCare').collection('carts')
 
     // JWT related api 
     app.post('/jwt', async (req, res) => {
@@ -199,6 +200,14 @@ async function run() {
       res.send(result)
     })
 
+
+    // cart collection api
+
+    app.post('/carts', async(req, res) => {
+      const cartItem = req.body
+      const result = await cartsCollection.insertOne(cartItem)
+      res.send(result)
+    })
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
