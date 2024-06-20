@@ -163,9 +163,15 @@ async function run() {
 
 
 
-    // Home category data
+    // Medicine Category related api
     app.get('/categoryCard', async (req, res) => {
       const result = await categorySlideCollection.find().toArray()
+      res.send(result)
+    })
+
+    app.post('/manage-category', async(req, res) => {
+      const query = req.body
+      const result = await categorySlideCollection.insertOne(query)
       res.send(result)
     })
 
@@ -292,6 +298,9 @@ async function run() {
       const result = await paymentCollection.updateOne(filter, updatedDoc)
       res.send(result)
     })
+
+
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
