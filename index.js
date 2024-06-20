@@ -3,6 +3,7 @@ const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const jwt = require('jsonwebtoken');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const cors = require('cors')
 const port = process.env.PORT || 4000;
 
@@ -32,6 +33,7 @@ async function run() {
     const categorySlideCollection = client.db('vitalCare').collection('homeCategory')
     const medicineCollection = client.db('vitalCare').collection('medicine')
     const cartsCollection = client.db('vitalCare').collection('carts')
+    const paymentCollection = client.db('vitalCare').collection('payments')
 
     // JWT related api 
     app.post('/jwt', async (req, res) => {
@@ -219,6 +221,12 @@ async function run() {
 
     app.put('/carts/:id', async (req, res) => {
       const id = req.params.id
+      const updateDoc = req.body
+      const updated = {
+        $set: {
+          quantity: quantity + 1
+        }
+      }
       const query = { _id: new ObjectId(id) }
       const result = await cartsCollection.findOne(query)
       res.send(result)
@@ -228,8 +236,45 @@ async function run() {
 
     app.delete('/carts/:id', async (req, res) => {
       const id = req.params.id
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) }
       const result = cartsCollection.deleteOne(query)
+      res.send(result)
+    })
+
+
+
+
+    // payment method intend
+    app.post('/create-payment-intent', async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100)
+      console.log(amount, 'inside of the amount')
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    })
+
+    // payment history send mongodb database 
+
+    app.post('/payments', async (req, res) => {
+      const payment = req.body;
+      const paymentResult = await paymentCollection.insertOne(payment)
+      const query = {
+        _id: {
+          $in: payment.cartId.map(id => new ObjectId(id))
+        }
+      }
+      const deleteResult = await cartsCollection.deleteMany(query)
+      res.send({ paymentResult, deleteResult })
+    })
+
+    app.get('/payments', async (req, res) => {
+      const result = await paymentCollection.find().toArray()
       res.send(result)
     })
 
