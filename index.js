@@ -169,11 +169,22 @@ async function run() {
       res.send(result)
     })
 
-    app.post('/manage-category', async(req, res) => {
+    app.post('/manage-category', async (req, res) => {
       const query = req.body
       const result = await categorySlideCollection.insertOne(query)
       res.send(result)
     })
+
+    app.get('/category/:category', async (req, res) => {
+      const category = req.params.category; 
+      const query = { category: category };
+      try {
+        const result = await medicineCollection.find(query).toArray();
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ message: 'Error fetching category data' });
+      }
+    });
 
     // all medicine product get api hare
     app.get('/medicine', async (req, res) => {
