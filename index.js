@@ -176,6 +176,19 @@ async function run() {
       res.send(result)
     })
 
+    app.get('/category', async (req, res) => {
+      const category = req.body
+      const result = await categorySlideCollection.find(category).toArray()
+      res.send(result)
+    })
+
+    app.delete('/category/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await categorySlideCollection.deleteOne(query)
+      res.send(result)
+    })
+
     app.get('/category/:category', async (req, res) => {
       const category = req.params.category;
       const query = { category: category };
@@ -316,6 +329,21 @@ async function run() {
       res.send(result)
     })
 
+    // Seller total revenue api
+    app.get('/seller-revenue/:email', async (req, res) => {
+      const result = await paymentCollection.find({ seller_email: req.params.email }).toArray();
+      res.send(result)
+    })
+
+
+    // user payment history related api
+    app.get('/user-payment-history/:email', async (req, res) => {
+      const result = await paymentCollection.find({ email: req.params.email }).toArray();
+      res.send(result)
+    })
+
+
+
     // banner related api
     app.post('/advertisement', async (req, res) => {
       const banner = req.body
@@ -340,10 +368,10 @@ async function run() {
       const result = await advertisementCollection.updateOne(filter, updatedDoc)
       res.send(result)
     })
-    
+
     app.delete('/advertisement/:id', async (req, res) => {
       const id = req.params.id
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) }
       const result = await advertisementCollection.deleteOne(query)
       res.send(result)
     })
