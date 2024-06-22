@@ -10,7 +10,16 @@ const port = process.env.PORT || 4000;
 
 // middleware
 
-app.use(cors())
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://vital-care-adnan.vercel.app",
+      "https://vital-care.netlify.app"
+    ]
+  })
+);
 app.use(express.json())
 
 
@@ -36,6 +45,13 @@ async function run() {
     const paymentCollection = client.db('vitalCare').collection('payments')
     const advertisementCollection = client.db('vitalCare').collection('advertisement')
 
+
+
+
+
+
+
+
     // JWT related api 
     app.post('/jwt', async (req, res) => {
       const user = req.body;
@@ -47,7 +63,7 @@ async function run() {
     const verifyToken = (req, res, next) => {
       console.log('inside verify Token ', req.headers.authorization)
       if (!req.headers.authorization) {
-        return res.status(401).send({ message: 'Forbidden access' })
+        return res.status(401).send({ message: 'Onno error' })
       }
       const token = req.headers.authorization.split(' ')[1];
       jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
@@ -70,9 +86,20 @@ async function run() {
       }
       next()
     }
+    // use verify admin after verifyToken 
+    const verifySeller = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email }
+      const user = await usersCollection.findOne(query)
+      const isAdmin = user?.role === 'seller';
+      if (!isAdmin) {
+        return res.status(403).send({ message: 'Forbidden Access' })
+      }
+      next()
+    }
     // set user in the ui 
 
-    app.patch('/users/user/:id', async (req, res) => {
+    app.patch('/users/user/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -86,7 +113,7 @@ async function run() {
 
     // set seller in the ui
 
-    app.patch('/users/seller/:id', async (req, res) => {
+    app.patch('/users/seller/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -101,11 +128,11 @@ async function run() {
     // user related api
 
     // only admin access routes
-    app.get('/users/admin/:email', async (req, res) => {
+    app.get('/users/admin/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
-      // if (email != req.decoded.email) {
-      //   return res.status(403).send({ message: 'Unauthorize access' })
-      // }
+      if (email != req.decoded.email) {
+        return res.status(403).send({ message: 'Unauthorize access' })
+      }
       const query = { email: email };
       const user = await usersCollection.findOne(query)
       let admin = false;
@@ -117,11 +144,11 @@ async function run() {
 
     // only seller can access this route
 
-    app.get('/users/seller/:email', async (req, res) => {
+    app.get('/users/seller/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
-      // if (email != req.decoded.email) {
-      //   return res.status(403).send({ message: 'Unauthorize access' })
-      // }
+      if (email != req.decoded.email) {
+        return res.status(403).send({ message: 'Unauthorize access' })
+      }
       const query = { email: email };
       const user = await usersCollection.findOne(query)
       let seller = false;
@@ -130,11 +157,11 @@ async function run() {
       }
       res.send({ seller })
     })
-    app.get('/users/user/:email', async (req, res) => {
+    app.get('/users/user/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
-      // if (email != req.decoded.email) {
-      //   return res.status(403).send({ message: 'Unauthorize access' })
-      // }
+      if (email != req.decoded.email) {
+        return res.status(403).send({ message: 'Unauthorize access' })
+      }
       const query = { email: email };
       const people = await usersCollection.findOne(query)
       let user = false;
@@ -146,7 +173,7 @@ async function run() {
 
 
 
-    app.get('/users', async (req, res) => {
+    app.get('/users', verifyToken, async (req, res) => {
       const result = await usersCollection.find().toArray()
       res.send(result)
     })
@@ -170,19 +197,19 @@ async function run() {
       res.send(result)
     })
 
-    app.post('/manage-category', async (req, res) => {
+    app.post('/manage-category', verifyToken, verifyAdmin, async (req, res) => {
       const query = req.body
       const result = await categorySlideCollection.insertOne(query)
       res.send(result)
     })
 
-    app.get('/category', async (req, res) => {
+    app.get('/category', verifyToken, async (req, res) => {
       const category = req.body
       const result = await categorySlideCollection.find(category).toArray()
       res.send(result)
     })
 
-    app.delete('/category/:id', async (req, res) => {
+    app.delete('/category/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
       const result = await categorySlideCollection.deleteOne(query)
@@ -225,7 +252,7 @@ async function run() {
 
     // medicine add only seller routes
 
-    app.post('/medicine', async (req, res) => {
+    app.post('/medicine', verifyToken, verifySeller, async (req, res) => {
       const query = req.body
       const result = await medicineCollection.insertOne(query)
       res.send(result)
@@ -233,7 +260,7 @@ async function run() {
 
     // seller added medicine showing on the seller dashboard
 
-    app.get('/medicine/:email', async (req, res) => {
+    app.get('/medicine/:email', verifyToken, async (req, res) => {
       const result = await medicineCollection.find({ seller_email: req.params.email }).toArray();
       res.send(result)
     })
@@ -241,21 +268,21 @@ async function run() {
 
     // cart collection api
 
-    app.post('/carts', async (req, res) => {
+    app.post('/carts', verifyToken, async (req, res) => {
       const cartItem = req.body
       const result = await cartsCollection.insertOne(cartItem)
       res.send(result)
     })
     // user cart collection get api 
 
-    app.get('/carts', async (req, res) => {
+    app.get('/carts', verifyToken, async (req, res) => {
       const email = req.query.email
       const query = { email: email }
       const result = await cartsCollection.find(query).toArray();
       res.send(result)
     })
 
-    app.put('/carts/:id', async (req, res) => {
+    app.put('/carts/:id', verifyToken, async (req, res) => {
       const id = req.params.id
       const updateDoc = req.body
       const updated = {
@@ -270,7 +297,7 @@ async function run() {
 
     // remove specific cart item on the page api
 
-    app.delete('/carts/:id', async (req, res) => {
+    app.delete('/carts/:id', verifyToken, async (req, res) => {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
       const result = cartsCollection.deleteOne(query)
@@ -281,7 +308,7 @@ async function run() {
 
 
     // payment method intend
-    app.post('/create-payment-intent', async (req, res) => {
+    app.post('/create-payment-intent', verifyToken, async (req, res) => {
       const { price } = req.body;
       const amount = parseInt(price * 100)
       console.log(amount, 'inside of the amount')
@@ -297,7 +324,7 @@ async function run() {
 
     // payment history send mongodb database 
 
-    app.post('/payments', async (req, res) => {
+    app.post('/payments', verifyToken, async (req, res) => {
       const payment = req.body;
       const paymentResult = await paymentCollection.insertOne(payment)
       const query = {
@@ -309,7 +336,7 @@ async function run() {
       res.send({ paymentResult, deleteResult })
     })
 
-    app.get('/payments', async (req, res) => {
+    app.get('/payments', verifyToken, async (req, res) => {
       const result = await paymentCollection.find().toArray()
       res.send(result)
     })
@@ -317,7 +344,7 @@ async function run() {
 
 
     // payment status update api 
-    app.patch('/payments/:id', async (req, res) => {
+    app.patch('/payments/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -330,14 +357,14 @@ async function run() {
     })
 
     // Seller total revenue api
-    app.get('/seller-revenue/:email', async (req, res) => {
+    app.get('/seller-revenue/:email', verifyToken, async (req, res) => {
       const result = await paymentCollection.find({ seller_email: req.params.email }).toArray();
       res.send(result)
     })
 
 
     // user payment history related api
-    app.get('/user-payment-history/:email', async (req, res) => {
+    app.get('/user-payment-history/:email', verifyToken, async (req, res) => {
       const result = await paymentCollection.find({ email: req.params.email }).toArray();
       res.send(result)
     })
@@ -345,7 +372,7 @@ async function run() {
 
 
     // banner related api
-    app.post('/advertisement', async (req, res) => {
+    app.post('/advertisement', verifyToken, async (req, res) => {
       const banner = req.body
       const result = await advertisementCollection.insertOne(banner)
       res.send(result)
@@ -357,7 +384,7 @@ async function run() {
       res.send(result)
     })
 
-    app.patch('/advertisement/:id', async (req, res) => {
+    app.patch('/advertisement/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -369,7 +396,7 @@ async function run() {
       res.send(result)
     })
 
-    app.delete('/advertisement/:id', async (req, res) => {
+    app.delete('/advertisement/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
       const result = await advertisementCollection.deleteOne(query)
