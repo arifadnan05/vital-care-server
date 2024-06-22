@@ -34,6 +34,7 @@ async function run() {
     const medicineCollection = client.db('vitalCare').collection('medicine')
     const cartsCollection = client.db('vitalCare').collection('carts')
     const paymentCollection = client.db('vitalCare').collection('payments')
+    const advertisementCollection = client.db('vitalCare').collection('advertisement')
 
     // JWT related api 
     app.post('/jwt', async (req, res) => {
@@ -176,7 +177,7 @@ async function run() {
     })
 
     app.get('/category/:category', async (req, res) => {
-      const category = req.params.category; 
+      const category = req.params.category;
       const query = { category: category };
       try {
         const result = await medicineCollection.find(query).toArray();
@@ -186,16 +187,21 @@ async function run() {
       }
     });
 
-    // all medicine product get api hare
+    // // all medicine product get api hare
+    // app.get('/medicine', async (req, res) => {
+    //   const category = req.query.category
+    //   let query = {}
+    //   if (category) query = { category }
+    //   const result = await medicineCollection.find(query).toArray()
+    //   res.send(result)
+    // })
+
+    // Medicine related api 
+
     app.get('/medicine', async (req, res) => {
-      const category = req.query.category
-      let query = {}
-      if (category) query = { category }
-      const result = await medicineCollection.find(query).toArray()
+      const result = await medicineCollection.find().toArray()
       res.send(result)
     })
-
-    // single medicine find api
 
     app.get('/medicine/details/:id', async (req, res) => {
       const id = req.params.id
@@ -310,8 +316,37 @@ async function run() {
       res.send(result)
     })
 
+    // banner related api
+    app.post('/advertisement', async (req, res) => {
+      const banner = req.body
+      const result = await advertisementCollection.insertOne(banner)
+      res.send(result)
+    })
 
+    app.get('/advertisement', async (req, res) => {
+      const banner = req.body
+      const result = await advertisementCollection.find(banner).toArray()
+      res.send(result)
+    })
 
+    app.patch('/advertisement/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          status: 'accepted'
+        }
+      }
+      const result = await advertisementCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+    })
+    
+    app.delete('/advertisement/:id', async (req, res) => {
+      const id = req.params.id
+      const query = {_id: new ObjectId(id)}
+      const result = await advertisementCollection.deleteOne(query)
+      res.send(result)
+    })
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
