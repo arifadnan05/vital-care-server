@@ -46,12 +46,6 @@ async function run() {
     const advertisementCollection = client.db('vitalCare').collection('advertisement')
 
 
-
-
-
-
-
-
     // JWT related api 
     app.post('/jwt', async (req, res) => {
       const user = req.body;
@@ -189,6 +183,12 @@ async function run() {
       res.send(result)
     })
 
+    app.delete('users/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await usersCollection.deleteOne(query)
+      res.send(result)
+    })
 
 
     // Medicine Category related api
