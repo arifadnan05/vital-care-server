@@ -17,7 +17,9 @@ app.use(
       "http://localhost:5174",
       "https://vital-care-adnan.vercel.app",
       "https://vital-care.netlify.app"
-    ]
+    ],
+    credentials: true,
+    optionSuccessStatus: 200,
   })
 );
 app.use(express.json())
@@ -37,7 +39,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     const usersCollection = client.db('vitalCare').collection('users')
     const categorySlideCollection = client.db('vitalCare').collection('homeCategory')
     const medicineCollection = client.db('vitalCare').collection('medicine')
@@ -55,7 +57,7 @@ async function run() {
 
     // verify middleware 
     const verifyToken = (req, res, next) => {
-      console.log('inside verify Token ', req.headers.authorization)
+      // console.log('inside verify Token ', req.headers.authorization)
       if (!req.headers.authorization) {
         return res.status(401).send({ message: 'Onno error' })
       }
@@ -183,7 +185,7 @@ async function run() {
       res.send(result)
     })
 
-    app.delete('users/:id', verifyToken, verifyAdmin, async (req, res) => {
+    app.delete('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
       const result = await usersCollection.deleteOne(query)
@@ -215,6 +217,27 @@ async function run() {
       const result = await categorySlideCollection.deleteOne(query)
       res.send(result)
     })
+
+    app.get('/category/:id', async (req,res) => {
+      const id = req.params.id
+      const query = {_id: new ObjectId(id)}
+      const result = await categorySlideCollection.findOne(query)
+      res.send(result)
+    })
+    app.put('/update-category/:id', async (req, res) => {
+      const id = req.params.id;
+      const categoryData = req.body;
+      // console.log(jobData)
+      const query = { _id: new ObjectId(id) }
+      const options = { upsert: true }
+      const updateDoc = {
+          $set: {
+              ...categoryData
+          }
+      }
+      const result = await categorySlideCollection.updateOne(query, updateDoc, options)
+      res.send(result)
+  })
 
     app.get('/category/:category', async (req, res) => {
       const category = req.params.category;
@@ -283,17 +306,49 @@ async function run() {
     })
 
     app.put('/carts/:id', verifyToken, async (req, res) => {
-      const id = req.params.id
-      const updateDoc = req.body
-      const updated = {
-        $set: {
-          quantity: quantity + 1
+      try {
+        const id = req.params.id
+        const query = { _id: new ObjectId(id) }
+
+        // Find the existing document to get the current quantity
+        const existingDoc = await cartsCollection.findOne(query)
+        if (!existingDoc) {
+          return res.status(404).send({ message: 'Cart not found' })
         }
+
+        // Decide whether to increment or decrement based on the request body
+        let updatedQuantity;
+        if (req.body.action === 'increment') {
+          updatedQuantity = existingDoc.quantity + 1;
+        } else if (req.body.action === 'decrement' && existingDoc.quantity > 1) {
+          updatedQuantity = existingDoc.quantity - 1;
+        } else {
+          return res.status(400).send({ message: 'Invalid action or quantity cannot be less than 1' });
+        }
+
+        // Update the quantity
+        const updated = {
+          $set: {
+            quantity: updatedQuantity
+          }
+        };
+
+        // Perform the update operation
+        const result = await cartsCollection.updateOne(query, updated);
+        if (result.modifiedCount === 0) {
+          return res.status(500).send({ message: 'Failed to update cart' });
+        }
+
+        // Fetch and send the updated document back
+        const updatedDoc = await cartsCollection.findOne(query);
+        res.send(updatedDoc);
+      } catch (error) {
+        console.error('Error updating cart item:', error);
+        res.status(500).send({ message: 'Internal Server Error' });
       }
-      const query = { _id: new ObjectId(id) }
-      const result = await cartsCollection.findOne(query)
-      res.send(result)
-    })
+    });
+
+
 
     // remove specific cart item on the page api
 
@@ -311,7 +366,7 @@ async function run() {
     app.post('/create-payment-intent', verifyToken, async (req, res) => {
       const { price } = req.body;
       const amount = parseInt(price * 100)
-      console.log(amount, 'inside of the amount')
+      // console.log(amount, 'inside of the amount')
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
         currency: 'usd',
@@ -403,8 +458,8 @@ async function run() {
       res.send(result)
     })
 
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
   }
